@@ -1,1 +1,0 @@
-{"sensor_id":"sensor_poznan_1","city":"Poznan","temperature":44.6,"timestamp":"2025-07-07T19:19:48.305+02:00","humidity":34.7,"pressure":1004.3,"kafka_timestamp":"2025-07-07T19:19:48.305+02:00","processing_time":"2025-07-07T19:19:50.003+02:00","anomaly_type":"HIGH_TEMP","is_anomaly":true}

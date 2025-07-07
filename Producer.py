@@ -194,6 +194,6 @@ def main():
         else:
             print("❌ Nieprawidłowy wybór")
 
-
+# main
 if __name__ == "__main__":
     main()

@@ -1,1 +1,0 @@
-{"sensor_id":"sensor_lodz_2","city":"Lodz","temperature":39.2,"timestamp":"2025-07-07T19:18:58.249+02:00","humidity":42.2,"pressure":1007.3,"kafka_timestamp":"2025-07-07T19:18:58.249+02:00","processing_time":"2025-07-07T19:19:00.004+02:00","anomaly_type":"HIGH_TEMP","is_anomaly":true}

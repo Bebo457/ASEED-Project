@@ -1,2 +1,0 @@
-{"sensor_id":"sensor_gdansk_2","city":"Gdansk","temperature":23.2,"timestamp":"2025-07-07T19:19:33.283+02:00","humidity":33.8,"pressure":1002.0,"kafka_timestamp":"2025-07-07T19:19:33.283+02:00","processing_time":"2025-07-07T19:19:40.003+02:00","anomaly_type":"NORMAL","is_anomaly":false}
-{"sensor_id":"sensor_poznan_2","city":"Poznan","temperature":19.9,"timestamp":"2025-07-07T19:19:38.291+02:00","humidity":48.7,"pressure":1021.7,"kafka_timestamp":"2025-07-07T19:19:38.291+02:00","processing_time":"2025-07-07T19:19:40.003+02:00","anomaly_type":"NORMAL","is_anomaly":false}
