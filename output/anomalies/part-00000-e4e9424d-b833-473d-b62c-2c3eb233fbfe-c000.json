@@ -1,0 +1,1 @@
+{"sensor_id":"sensor_wroclaw_3","city":"Wroclaw","temperature":35.5,"timestamp":"2025-07-07T19:18:58.247+02:00","humidity":54.1,"pressure":1008.8,"kafka_timestamp":"2025-07-07T19:18:58.248+02:00","processing_time":"2025-07-07T19:19:00.004+02:00","anomaly_type":"HIGH_TEMP","is_anomaly":true}

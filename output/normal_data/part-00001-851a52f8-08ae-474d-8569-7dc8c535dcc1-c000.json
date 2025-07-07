@@ -1,0 +1,1 @@
+{"sensor_id":"sensor_warszawa_3","city":"Warszawa","temperature":21.1,"timestamp":"2025-07-07T19:19:08.254+02:00","humidity":35.4,"pressure":1008.9,"kafka_timestamp":"2025-07-07T19:19:08.254+02:00","processing_time":"2025-07-07T19:19:10.003+02:00","anomaly_type":"NORMAL","is_anomaly":false}

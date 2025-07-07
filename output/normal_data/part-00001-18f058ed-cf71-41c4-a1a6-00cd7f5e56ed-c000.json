@@ -1,0 +1,2 @@
+{"sensor_id":"sensor_warszawa_1","city":"Warszawa","temperature":7.8,"timestamp":"2025-07-07T19:19:53.307+02:00","humidity":46.1,"pressure":1006.9,"kafka_timestamp":"2025-07-07T19:19:53.307+02:00","processing_time":"2025-07-07T19:20:00.004+02:00","anomaly_type":"NORMAL","is_anomaly":false}
+{"sensor_id":"sensor_lodz_2","city":"Lodz","temperature":18.9,"timestamp":"2025-07-07T19:19:58.316+02:00","humidity":40.7,"pressure":1001.4,"kafka_timestamp":"2025-07-07T19:19:58.316+02:00","processing_time":"2025-07-07T19:20:00.004+02:00","anomaly_type":"NORMAL","is_anomaly":false}
