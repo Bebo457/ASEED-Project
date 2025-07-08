@@ -25,13 +25,17 @@ class TemperatureSensorSimulator:
 
         # Miasta i ich typowe temperatury (średnie sezonowe)
         self.cities = {
-            'Warszawa': {'min': 15, 'max': 25, 'anomaly_chance': 0.05},
-            'Krakow': {'min': 14, 'max': 24, 'anomaly_chance': 0.05},
-            'Gdansk': {'min': 12, 'max': 22, 'anomaly_chance': 0.05},
-            'Wroclaw': {'min': 16, 'max': 26, 'anomaly_chance': 0.05},
-            'Poznan': {'min': 15, 'max': 25, 'anomaly_chance': 0.05},
-            'Lodz': {'min': 14, 'max': 24, 'anomaly_chance': 0.05},
+            'Warszawa': {'min': 15, 'max': 25, 'city_name': 'Warszawa'},
+            'Krakow': {'min': 14, 'max': 24, 'city_name': 'Krakow'},
+            'Gdansk': {'min': 12, 'max': 22, 'city_name': 'Gdansk'},
+            'Wroclaw': {'min': 16, 'max': 26, 'city_name': 'Wroclaw'},
+            'Poznan': {'min': 15, 'max': 25, 'city_name': 'Poznan'},
+            'Lodz': {'min': 14, 'max': 24, 'city_name': 'Lodz'},
         }
+
+        # Inicjalizuj tracking ostatnich temperatur dla spike detection
+        for city_name in self.cities.keys():
+            setattr(self, f"last_temp_{city_name}", 20.0)
 
         # Topic Kafka
         self.topic = 'city-temperatures'
@@ -41,28 +45,54 @@ class TemperatureSensorSimulator:
         print(f"🏙️  Monitorowane miasta: {', '.join(self.cities.keys())}")
         print("-" * 60)
 
-    def generate_temperature(self, city_config):
+    def generate_temperature(self, city_config, city_name=None):
         """
-        Generuje realistyczną temperaturę dla miasta
+        Generuje realistyczną temperaturę z różnymi typami anomalii
+        2.5% - wysoka temperatura (50+°C)
+        2.5% - niska temperatura (-30°C)
+        5% - spike (nagły skok względem poprzedniej)
         """
-        # Normalna temperatura
-        temp = random.uniform(city_config['min'], city_config['max'])
+        # Normalna temperatura bazowa
+        base_temp = random.uniform(city_config['min'], city_config['max'])
 
-        # Czasami dodaj anomalie
-        if random.random() < city_config['anomaly_chance']:
-            if random.choice([True, False]):
-                # Anomalia - bardzo gorąco
-                temp += random.uniform(15, 25)
-                print(f"🔥 ANOMALIA: Bardzo wysoka temperatura!")
-            else:
-                # Anomalia - bardzo zimno
-                temp -= random.uniform(10, 20)
-                print(f"❄️  ANOMALIA: Bardzo niska temperatura!")
+        # Sprawdź typ anomalii
+        anomaly_roll = random.random()
 
-        # Dodaj małe losowe wahania
-        temp += random.uniform(-2, 2)
+        if anomaly_roll < 0.025:  # 2.5% - Ekstremalna wysoka temperatura
+            temp = random.uniform(50, 70)  # 50-70°C (usterka czujnika/pożar)
+            print(f"🔥 ANOMALIA WYSOKA: Ekstremalna temperatura {temp:.1f}°C!")
 
-        return round(temp, 1)
+        elif anomaly_roll < 0.05:  # 2.5% - Ekstremalna niska temperatura
+            temp = random.uniform(-35, -20)  # -35 do -20°C (awaria/mróz)
+            print(f"❄️  ANOMALIA NISKA: Ekstremalna temperatura {temp:.1f}°C!")
+
+        elif anomaly_roll < 0.1:  # 5% - Spike (nagły skok)
+            # Pobierz ostatnią temperaturę dla tego miasta
+            if city_name is None:
+                city_name = city_config.get('city_name', 'unknown')
+
+            last_temp_key = f"last_temp_{city_name}"
+            last_temp = getattr(self, last_temp_key, base_temp)
+
+            # Nagły skok w górę lub w dół
+            spike_direction = random.choice([1, -1])
+            spike_magnitude = random.uniform(20, 40)  # 20-40°C skok
+            temp = last_temp + (spike_direction * spike_magnitude)
+
+            print(f"⚡ SPIKE ANOMALIA: {'+' if spike_direction > 0 else ''}{spike_direction * spike_magnitude:.1f}°C "
+                  f"(z {last_temp:.1f}°C → {temp:.1f}°C)")
+
+        else:  # 90% - Normalna temperatura
+            temp = base_temp
+            # Dodaj małe naturalne wahania
+            temp += random.uniform(-2, 2)
+
+        # Zapamiętaj temperaturę dla spike detection
+        if city_name is None:
+            city_name = city_config.get('city_name', 'unknown')
+        setattr(self, f"last_temp_{city_name}", temp)
+
+        return round(temp, 1)  # ← TO BYŁO NAJWAŻNIEJSZE!
 
     def create_sensor_data(self, city, temperature):
         """
@@ -114,12 +144,12 @@ class TemperatureSensorSimulator:
         try:
             while time.time() < end_time:
                 # Dla każdego miasta
-                for city, config in self.cities.items():
-                    # Generuj temperaturę
-                    temperature = self.generate_temperature(config)
+                for city_name, config in self.cities.items():
+                    # Generuj temperaturę z nowymi anomaliami (przekaż city_name explicite)
+                    temperature = self.generate_temperature(config, city_name)
 
                     # Utwórz dane czujnika
-                    sensor_data = self.create_sensor_data(city, temperature)
+                    sensor_data = self.create_sensor_data(city_name, temperature)
 
                     # Wyślij do Kafka
                     self.send_data(sensor_data)

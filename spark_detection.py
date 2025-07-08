@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Spark Structured Streaming - Wykrywanie anomalii temperatury
-Prosty i czytelny kod do analizy danych z czujników IoT
+Rate-based spike detection + zwykłe progi
 """
 
 from pyspark.sql import SparkSession
@@ -9,9 +9,13 @@ from pyspark.sql.functions import *
 from pyspark.sql.types import *
 import os
 
+# === KONFIGURACJA PROGÓW ANOMALII ===
+TEMP_HIGH_THRESHOLD = 35.0      # °C - bardzo gorąco
+TEMP_LOW_THRESHOLD = -10.0      # °C - bardzo zimno
+
 # === KONFIGURACJA OKIEN CZASOWYCH ===
 WINDOW_DURATION = "30 seconds"  # Długość okna dla agregacji
-WATERMARK_DELAY = "1 minute"  # Opóźnienie watermark (powinno być >= WINDOW_DURATION)
+WATERMARK_DELAY = "1 minute"    # Opóźnienie watermark
 
 
 def create_spark_session():
@@ -49,18 +53,25 @@ def define_schema():
     ])
 
 
-def detect_temperature_anomalies(df):
+def detect_temperature_anomalies_simple(df):
     """
-    Wykrywa anomalie temperaturowe - PROSTE PROGI
+    Wykrywa anomalie: tylko progi absolutne (streaming-compatible)
     """
     return df.withColumn(
         "anomaly_type",
-        when(col("temperature") > 35.0, "HIGH_TEMP")
-        .when(col("temperature") < 0.0, "LOW_TEMP")
+        when(col("temperature") > TEMP_HIGH_THRESHOLD, "HIGH_TEMP")
+        .when(col("temperature") < TEMP_LOW_THRESHOLD, "LOW_TEMP")
         .otherwise("NORMAL")
     ).withColumn(
         "is_anomaly",
         col("anomaly_type") != "NORMAL"
+    ).withColumn(
+        "anomaly_details",
+        when(col("anomaly_type") == "HIGH_TEMP",
+             concat(lit("Very hot: "), round(col("temperature"), 1), lit("°C")))
+        .when(col("anomaly_type") == "LOW_TEMP",
+             concat(lit("Very cold: "), round(col("temperature"), 1), lit("°C")))
+        .otherwise("Normal reading")
     )
 
 
@@ -69,6 +80,9 @@ def main():
     Główna funkcja aplikacji
     """
     print("🚀 Uruchomienie Spark Anomaly Detector")
+    print("=" * 50)
+    print(f"🌡️  Progi temperatur: {TEMP_LOW_THRESHOLD}°C < NORMAL < {TEMP_HIGH_THRESHOLD}°C")
+    print("📊 Wykrywanie: progi absolutne (HIGH_TEMP, LOW_TEMP)")
     print("=" * 50)
 
     # Utwórz sesję Spark
@@ -108,33 +122,46 @@ def main():
         .withColumn("timestamp", to_timestamp(col("timestamp"))) \
         .withColumn("processing_time", current_timestamp())
 
-    # WYKRYWANIE ANOMALII
-    with_anomalies = detect_temperature_anomalies(processed_stream)
+    # WYKRYWANIE ANOMALII (bez spike detection - streaming limitation)
+    with_anomalies = detect_temperature_anomalies_simple(processed_stream)
 
-    # === ZAPIS 1: WSZYSTKIE DANE (z flagami anomalii) ===
+    # === ZAPIS 1: WSZYSTKIE DANE (z flagami anomalii) - CSV ===
     all_data_query = with_anomalies \
+        .select(
+        "sensor_id", "city", "temperature", "timestamp", "humidity", "pressure",
+        "processing_time", "anomaly_type", "is_anomaly", "anomaly_details"
+    ) \
         .writeStream \
         .outputMode("append") \
-        .format("json") \
+        .format("csv") \
         .option("path", "output/normal_data") \
         .option("checkpointLocation", "checkpoints/all_data") \
+        .option("header", "true") \
+        .option("sep", ",") \
+        .option("encoding", "UTF-8") \
         .trigger(processingTime="10 seconds") \
         .start()
 
-    # === ZAPIS 2: TYLKO ANOMALIE ===
+    # === ZAPIS 2: TYLKO ANOMALIE - CSV ===
     anomalies_only = with_anomalies.filter(col("is_anomaly") == True)
 
     anomalies_query = anomalies_only \
+        .select(
+        "sensor_id", "city", "temperature", "timestamp",
+        "anomaly_type", "anomaly_details"
+    ) \
         .writeStream \
         .outputMode("append") \
-        .format("json") \
+        .format("csv") \
         .option("path", "output/anomalies") \
         .option("checkpointLocation", "checkpoints/anomalies") \
+        .option("header", "true") \
+        .option("sep", ",") \
+        .option("encoding", "UTF-8") \
         .trigger(processingTime="5 seconds") \
         .start()
 
-    # === ZAPIS 3: AGREGACJE W OKNACH CZASOWYCH ===
-    # Średnia temperatura co 30 sekund dla każdego miasta
+    # === ZAPIS 3: AGREGACJE W OKNACH CZASOWYCH - CSV ===
     windowed_aggregates = with_anomalies \
         .withWatermark("timestamp", WATERMARK_DELAY) \
         .groupBy(
@@ -150,25 +177,32 @@ def main():
     ) \
         .withColumn("window_start", col("window.start")) \
         .withColumn("window_end", col("window.end")) \
-        .drop("window")
+        .drop("window") \
+        .select(
+        "window_start", "window_end", "city", "avg_temperature",
+        "min_temperature", "max_temperature", "measurement_count",
+        "anomaly_count"
+    )
 
     aggregates_query = windowed_aggregates \
         .writeStream \
         .outputMode("append") \
-        .format("json") \
+        .format("csv") \
         .option("path", "output/aggregations") \
         .option("checkpointLocation", "checkpoints/aggregations") \
+        .option("header", "true") \
+        .option("sep", ",") \
+        .option("encoding", "UTF-8") \
         .trigger(processingTime="30 seconds") \
         .start()
 
     # === WYŚWIETLANIE NA KONSOLI ===
-    # Pokaz wykryte anomalie w czasie rzeczywistym
     console_query = anomalies_only.select(
         "timestamp",
         "city",
         "temperature",
         "anomaly_type",
-        "sensor_id"
+        "anomaly_details"
     ) \
         .writeStream \
         .outputMode("append") \
@@ -178,8 +212,8 @@ def main():
         .start()
 
     print("🎯 Aplikacja uruchomiona! Monitoruję anomalie...")
-    print("📊 Dane zapisywane do:")
-    print("   • output/normal_data/ - wszystkie pomiary")
+    print("📊 Dane zapisywane do CSV:")
+    print("   • output/normal_data/ - wszystkie pomiary + anomaly detection")
     print("   • output/anomalies/ - tylko anomalie")
     print(f"   • output/aggregations/ - statystyki {WINDOW_DURATION}")
     print("💻 Anomalie wyświetlane na konsoli")
