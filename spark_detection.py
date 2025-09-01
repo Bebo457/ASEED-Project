@@ -136,7 +136,7 @@ def main():
         # Output stream 1: All data with anomaly flags - CSV
         all_data_query = with_anomalies \
             .select(
-            "city", "temperature", "timestamp",
+            "batch_id", "city", "temperature", "timestamp",
             "processing_time", "anomaly_type", "is_anomaly", "anomaly_details"
         ) \
             .writeStream \
@@ -153,7 +153,7 @@ def main():
 
         anomalies_query = anomalies_only \
             .select(
-            "city", "temperature", "timestamp",
+            "batch_id", "city", "temperature", "timestamp",
             "processing_time", "anomaly_type", "anomaly_details"
         ) \
             .writeStream \
@@ -167,7 +167,7 @@ def main():
 
         # Console output for real-time monitoring
         console_query = anomalies_only.select(
-            "timestamp", "city", "temperature", "anomaly_type", "anomaly_details"
+            "batch_id", "timestamp", "city", "temperature", "anomaly_type", "anomaly_details"
         ) \
             .writeStream \
             .outputMode("append") \
