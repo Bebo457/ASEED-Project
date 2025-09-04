@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import json
 import random
 import time
@@ -12,9 +13,15 @@ batch_id = 0
 
 class TemperatureSensorSimulator:
     def __init__(self):
+        kafka_servers = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092')
+
         self.producer = KafkaProducer(
-            bootstrap_servers='localhost:9092',
-            value_serializer=lambda v: json.dumps(v).encode('utf-8')
+            bootstrap_servers=kafka_servers,
+            value_serializer=lambda v: json.dumps(v).encode('utf-8'),
+            # Dodanie konfiguracji dla stabilności w Docker
+            retries=5,
+            request_timeout_ms=60000,
+            retry_backoff_ms=1000
         )
 
         self.cities = ['Warszawa', 'Krakow', 'Gdansk', 'Wroclaw', 'Poznan', 'Lodz']
@@ -81,16 +88,17 @@ class TemperatureSensorSimulator:
 
 
 if __name__ == "__main__":
-    print("Temperature Sensor Simulator")
+    print("🌡️ Temperature Sensor Simulator")
+
+    # Automatyczne wartości dla Docker (można nadpisać zmiennymi środowiskowymi)
+    duration = int(os.getenv('SIMULATION_DURATION', '60'))  # domyślnie 60 minut
+    interval = int(os.getenv('SIMULATION_INTERVAL', '5'))  # domyślnie 5 sekund
+
+    print(f"⏰ Czas symulacji: {duration} minut")
+    print(f"🔄 Częstotliwość: {interval} sekund")
 
     try:
-        duration = int(input("Time of the simulation (minutes, default 60): ") or 60)
-        interval = int(input("Frequency of data (seconds, default 5): ") or 5)
-
         simulator = TemperatureSensorSimulator()
         simulator.run(duration, interval)
-
-    except ValueError:
-        print(" Incorrect value")
     except KeyboardInterrupt:
-        print("\n End of the simulation")
+        print("\n🛑 Zakończenie symulacji")

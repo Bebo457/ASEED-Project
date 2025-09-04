@@ -27,22 +27,20 @@ def create_spark_session():
     """
     return SparkSession.builder \
         .appName("TemperatureAnomalyDetector") \
-        .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.13:4.0.0") \
+        .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.6") \
         .getOrCreate()
 
 
 def setup_output_directories():
     """
-    Creates output directories, removes old ones if they exist
+    Creates output directories without removing old ones (Docker-safe)
     """
-    import shutil
-
     directories = ["output/normal_data", "output/anomalies", "output/aggregations", "checkpoints"]
+
     for directory in directories:
-        if os.path.exists(directory):
-            shutil.rmtree(directory)
         os.makedirs(directory, exist_ok=True)
-    print("📁 Output directories created (old ones removed)")
+
+    print("📁 Output directories created")
 
 
 def define_schema():
@@ -104,10 +102,12 @@ def main():
 
     try:
         # Read streaming data from Kafka
+        kafka_servers = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092')
+
         kafka_stream = spark \
             .readStream \
             .format("kafka") \
-            .option("kafka.bootstrap.servers", "localhost:9092") \
+            .option("kafka.bootstrap.servers", kafka_servers) \
             .option("subscribe", "city-temperatures") \
             .option("startingOffsets", "latest") \
             .option("failOnDataLoss", "false") \
