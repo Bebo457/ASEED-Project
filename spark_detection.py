@@ -23,11 +23,14 @@ PROCESSING_INTERVAL = "5 seconds"  # How often to process and save data
 
 def create_spark_session():
     """
-    Creates Spark session with Kafka integration
+    Creates Spark session with Kafka integration - WITHOUT UI
     """
     return SparkSession.builder \
         .appName("TemperatureAnomalyDetector") \
         .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.6") \
+        .config("spark.ui.enabled", "false") \
+        .config("spark.ui.showConsoleProgress", "false") \
+        .config("spark.sql.adaptive.enabled", "false") \
         .getOrCreate()
 
 
@@ -82,10 +85,11 @@ def main():
     """
     Main application function - sets up streaming pipeline
     """
-    print("🚀 Starting Spark Anomaly Detector")
+    print("🚀 Starting Spark Anomaly Detector (No UI)")
     print("=" * 50)
     print(f"🌡️  Temperature thresholds: {TEMP_LOW_THRESHOLD}°C < NORMAL < {TEMP_HIGH_THRESHOLD}°C")
     print("📊 Detection method: absolute thresholds (HIGH_TEMP, LOW_TEMP)")
+    print("🖥️  Spark UI: DISABLED (lightweight mode)")
     print("=" * 50)
 
     # Initialize Spark session
@@ -165,23 +169,23 @@ def main():
             .trigger(processingTime=PROCESSING_INTERVAL) \
             .start()
 
-        # Console output for real-time monitoring
-        console_query = anomalies_only.select(
-            "batch_id", "timestamp", "city", "temperature", "anomaly_type", "anomaly_details"
-        ) \
+        # Console output for real-time monitoring - Enhanced with statistics
+        console_query = with_anomalies \
             .writeStream \
             .outputMode("append") \
             .format("console") \
             .option("truncate", False) \
             .trigger(processingTime=PROCESSING_INTERVAL) \
+            .queryName("TemperatureMonitor") \
             .start()
 
         print("🎯 Application started! Monitoring anomalies...")
         print("📊 Data saved to CSV:")
         print("   • output/normal_data/ - all measurements + anomaly detection")
         print("   • output/anomalies/ - anomalies only")
-        print("💻 Anomalies displayed on console")
-        print(f"⏰ Time window: {WINDOW_DURATION}")
+        print("💻 All data displayed on console (real-time)")
+        print(f"⏰ Processing interval: {PROCESSING_INTERVAL}")
+        print("🚫 Spark UI disabled for better performance")
         print("\n🛑 Ctrl+C to stop")
         print("=" * 50)
 
@@ -195,9 +199,12 @@ def main():
     except KeyboardInterrupt:
         print("\n⏹️  Stopping application...")
         # Stop all streaming queries gracefully
-        all_data_query.stop()
-        anomalies_query.stop()
-        console_query.stop()
+        try:
+            all_data_query.stop()
+            anomalies_query.stop()
+            console_query.stop()
+        except:
+            pass
         print("✅ Application stopped")
     finally:
         spark.stop()

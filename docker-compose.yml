@@ -20,7 +20,7 @@ services:
         reservations:
           memory: 128M
 
-  # Kafka Broker - Z LIMITAMI PAMIĘCI
+  # Kafka Broker
   kafka:
     image: confluentinc/cp-kafka:7.4.0
     hostname: kafka
@@ -29,7 +29,6 @@ services:
       - zookeeper
     ports:
       - "9092:9092"
-      - "9997:9997"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
@@ -39,9 +38,7 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      KAFKA_JMX_PORT: 9997
-      KAFKA_JMX_HOSTNAME: localhost
-      # OGRANICZENIA PAMIĘCI - DODANE
+      # Ograniczenia pamięci
       KAFKA_HEAP_OPTS: "-Xmx256M -Xms256M"
       KAFKA_OPTS: "-Djava.awt.headless=true"
     networks:
@@ -52,7 +49,6 @@ services:
           memory: 512M
         reservations:
           memory: 256M
-    # ZWIĘKSZONY HEALTHCHECK TIMEOUT
     healthcheck:
       test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
       interval: 30s
@@ -89,7 +85,7 @@ services:
     stdin_open: true
     tty: true
 
-  # Spark Consumer/Detector - Z LIMITAMI PAMIĘCI
+  # Spark Consumer/Detector - BEZ SPARK UI
   spark-detector:
     build: .
     container_name: spark-detector
@@ -99,9 +95,10 @@ services:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - SPARK_MASTER=local[*]
       - PYSPARK_SUBMIT_ARGS=--driver-memory 512m --executor-memory 512m pyspark-shell
+      # WYŁĄCZENIE SPARK UI
+      - SPARK_UI_ENABLED=false
     command: python3 spark_detection.py
-    ports:
-      - "4040:4040"  # Spark UI
+    # USUNIĘTE PORTY SPARK UI
     volumes:
       - ./output:/app/output
       - ./checkpoints:/app/checkpoints
@@ -113,25 +110,6 @@ services:
           memory: 768M
         reservations:
           memory: 512M
-
-  # Kafka UI
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    container_name: kafka-ui
-    depends_on:
-      - kafka
-    ports:
-      - "8080:8080"
-    environment:
-      KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
-      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
-    networks:
-      - kafka-network
-    deploy:
-      resources:
-        limits:
-          memory: 256M
 
 networks:
   kafka-network:
