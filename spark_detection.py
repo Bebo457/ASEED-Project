@@ -23,7 +23,7 @@ PROCESSING_INTERVAL = "5 seconds"  # How often to process and save data
 
 def create_spark_session():
     """
-    Creates Spark session with Kafka integration - WITHOUT UI
+    Creates Spark session with Kafka integration
     """
     return SparkSession.builder \
         .appName("TemperatureAnomalyDetector") \
@@ -43,7 +43,7 @@ def setup_output_directories():
     for directory in directories:
         os.makedirs(directory, exist_ok=True)
 
-    print("📁 Output directories created")
+    print("Output directories created")
 
 
 def define_schema():
@@ -85,11 +85,11 @@ def main():
     """
     Main application function - sets up streaming pipeline
     """
-    print("🚀 Starting Spark Anomaly Detector (No UI)")
+    print("Starting Spark Anomaly Detector (No UI)")
     print("=" * 50)
-    print(f"🌡️  Temperature thresholds: {TEMP_LOW_THRESHOLD}°C < NORMAL < {TEMP_HIGH_THRESHOLD}°C")
-    print("📊 Detection method: absolute thresholds (HIGH_TEMP, LOW_TEMP)")
-    print("🖥️  Spark UI: DISABLED (lightweight mode)")
+    print(f"Temperature thresholds: {TEMP_LOW_THRESHOLD}°C < NORMAL < {TEMP_HIGH_THRESHOLD}°C")
+    print("Detection method: absolute thresholds (HIGH_TEMP, LOW_TEMP)")
+    print("Spark UI: DISABLED (lightweight mode)")
     print("=" * 50)
 
     # Initialize Spark session
@@ -102,7 +102,7 @@ def main():
     # Define data schema
     schema = define_schema()
 
-    print("📡 Connecting to Kafka...")
+    print("Connecting to Kafka...")
 
     try:
         # Read streaming data from Kafka
@@ -118,8 +118,8 @@ def main():
             .option("maxOffsetsPerTrigger", "1000") \
             .load()
 
-        print("✅ Connected to Kafka")
-        print("🔍 Starting data analysis...")
+        print("Connected to Kafka")
+        print("Starting data analysis...")
 
         # Parse JSON messages from Kafka
         parsed_stream = kafka_stream \
@@ -179,22 +179,22 @@ def main():
             .queryName("TemperatureMonitor") \
             .start()
 
-        print("🎯 Application started! Monitoring anomalies...")
-        print("📊 Data saved to CSV:")
+        print("Application started! Monitoring anomalies...")
+        print("Data saved to CSV:")
         print("   • output/normal_data/ - all measurements + anomaly detection")
         print("   • output/anomalies/ - anomalies only")
-        print("💻 All data displayed on console (real-time)")
-        print(f"⏰ Processing interval: {PROCESSING_INTERVAL}")
-        print("🚫 Spark UI disabled for better performance")
-        print("\n🛑 Ctrl+C to stop")
+        print("All data displayed on console (real-time)")
+        print(f"Processing interval: {PROCESSING_INTERVAL}")
+        print("Spark UI disabled for better performance")
+        print("\nCtrl+C to stop")
         print("=" * 50)
 
         # Wait for streaming queries to finish
         all_data_query.awaitTermination()
 
     except Exception as e:
-        print(f"❌ Error: {e}")
-        print("💡 Make sure Kafka is running and Producer is sending data")
+        print(f"Error: {e}")
+        print("Make sure Kafka is running and Producer is sending data")
 
     except KeyboardInterrupt:
         print("\n⏹️  Stopping application...")
@@ -205,7 +205,7 @@ def main():
             console_query.stop()
         except:
             pass
-        print("✅ Application stopped")
+        print("Application stopped")
     finally:
         spark.stop()
 
