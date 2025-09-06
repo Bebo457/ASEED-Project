@@ -1,3 +1,6 @@
 artifacts/
 checkpoints/
 output/
+EC2_commands.txt
+ASEED_Key.pem
+Key.pem

@@ -20,6 +20,13 @@ bin/kafka-topics.sh --create --topic city-temperatures --bootstrap-server localh
 
 4. Launch Producer.py
 5. Launch spark_detection.py
+
+# Launching on AWS LernerLab
+
+1. Start Lab
+2. Create instance of EC2 - add 2 security groups for Kafka UI (Port 8080) and Spark UI (4040).
+3. Wait for the instance to turn on.
+
 # Requirements
 * kafka 2.13-3.9.1
 * spark 4.0.0
